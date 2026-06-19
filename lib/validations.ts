@@ -22,6 +22,27 @@ export const draftSchema = z.object({
   status: z.enum(draftStatuses).default("draft")
 });
 
+export const draftThreadSchema = z.object({
+  platform: z.enum(platforms).default("X"),
+  status: z.enum(draftStatuses).default("draft"),
+  posts: z
+    .array(
+      z.object({
+        content: z.string().trim().min(1, "Post content is required")
+      })
+    )
+    .min(1, "At least one post is required")
+    .max(25, "Keep a draft thread under 25 posts")
+});
+
+export const draftRewriteSchema = z.object({
+  instructions: z
+    .string()
+    .trim()
+    .min(1, "Tell the agent what to adjust")
+    .max(2000, "Keep adjustment notes under 2000 characters")
+});
+
 export const styleProfileSchema = z.object({
   dialect: z.string().trim().optional().default(""),
   tone: z.string().trim().optional().default(""),
@@ -80,6 +101,8 @@ export const agentConfigSchema = z.object({
 
 export type IdeaFormValues = z.infer<typeof ideaSchema>;
 export type DraftFormValues = z.infer<typeof draftSchema>;
+export type DraftThreadFormValues = z.infer<typeof draftThreadSchema>;
+export type DraftRewriteFormValues = z.infer<typeof draftRewriteSchema>;
 export type StyleProfileFormValues = z.infer<typeof styleProfileSchema>;
 export type AiProviderConfigFormValues = z.infer<typeof aiProviderConfigSchema>;
 export type AgentConfigFormValues = z.infer<typeof agentConfigSchema>;

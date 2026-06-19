@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/delete-button";
-import { DraftForm } from "@/components/draft-form";
+import { DraftThreadEditor } from "@/components/draft-thread-editor";
 import { PageHeader } from "@/components/page-header";
+import { PipelineRunDetails } from "@/components/pipeline-run-details";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { deleteDraft, updateDraft } from "@/lib/actions/drafts";
+import { deleteDraft, rewriteDraftWithAgent, updateDraftThread } from "@/lib/actions/drafts";
+import { splitDraftContent } from "@/lib/draft-posts";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/utils";
 
@@ -15,9 +17,11 @@ export default async function DraftDetailPage({ params }: { params: Promise<{ id
     where: { id },
     include: {
       idea: true,
+      posts: {
+        orderBy: { position: "asc" }
+      },
       agentRuns: {
-        orderBy: { createdAt: "desc" },
-        take: 5
+        orderBy: { createdAt: "asc" }
       }
     }
   });
@@ -47,41 +51,31 @@ export default async function DraftDetailPage({ params }: { params: Promise<{ id
       <Card>
         <CardHeader>
           <CardTitle>Edit draft</CardTitle>
-          <CardDescription>Refine the post content and mark it ready when it is usable.</CardDescription>
+          <CardDescription>Edit the final post or expand it into a multi-post X thread.</CardDescription>
         </CardHeader>
         <CardContent>
-          <DraftForm
+          <DraftThreadEditor
             defaultValues={{
               platform: draft.platform as "x" | "X" | "linkedin" | "newsletter" | "other",
-              content: draft.content,
-              status: draft.status as "draft" | "ready" | "needs_edit" | "published" | "archived"
+              status: draft.status as "draft" | "ready" | "needs_edit" | "published" | "archived",
+              posts:
+                draft.posts.length > 0
+                  ? draft.posts.map((post) => ({ content: post.content }))
+                  : splitDraftContent(draft.content).map((content) => ({ content }))
             }}
-            onSubmit={updateDraft.bind(null, draft.id)}
+            onSave={updateDraftThread.bind(null, draft.id)}
+            onRewrite={rewriteDraftWithAgent.bind(null, draft.id)}
           />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Agent history</CardTitle>
-          <CardDescription>Past automation attempts connected to this draft.</CardDescription>
+          <CardTitle>Agent pipeline details</CardTitle>
+          <CardDescription>What each agent produced while generating this draft.</CardDescription>
         </CardHeader>
         <CardContent>
-          {draft.agentRuns.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No agent runs are connected to this draft yet.</p>
-          ) : (
-            <div className="divide-y">
-              {draft.agentRuns.map((run) => (
-                <div key={run.id} className="py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{run.agentName}</p>
-                    <Badge>{run.status}</Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{formatDate(run.createdAt)}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          <PipelineRunDetails runs={draft.agentRuns} />
         </CardContent>
       </Card>
     </div>

@@ -42,16 +42,29 @@ model Idea {
 }
 
 model Draft {
-  id        String     @id @default(cuid())
+  id        String      @id @default(cuid())
   ideaId    String?
-  idea      Idea?      @relation(fields: [ideaId], references: [id], onDelete: SetNull)
-  platform  String     @default("x")
+  idea      Idea?       @relation(fields: [ideaId], references: [id], onDelete: SetNull)
+  platform  String      @default("x")
   content   String
-  status    String     @default("draft")
+  status    String      @default("draft")
   scoreJson String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  posts     DraftPost[]
   agentRuns AgentRun[]
+}
+
+model DraftPost {
+  id        String   @id @default(cuid())
+  draftId   String
+  draft     Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  position  Int
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([draftId, position])
 }
 
 model AgentRun {

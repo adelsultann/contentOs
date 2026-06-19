@@ -94,7 +94,13 @@ export async function runContentPipeline(ideaId: string): Promise<Draft> {
       platform: "X",
       content: editor.data.editedDraft,
       status: score.data.recommendation === "ready" ? "ready" : "needs_edit",
-      scoreJson: JSON.stringify(score.data)
+      scoreJson: JSON.stringify(score.data),
+      posts: {
+        create: {
+          position: 1,
+          content: editor.data.editedDraft
+        }
+      }
     }
   });
 
