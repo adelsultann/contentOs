@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model StyleProfile {
+  id            String   @id @default(cuid())
+  dialect       String   @default("")
+  tone          String   @default("")
+  audience      String   @default("")
+  writingRules  String   @default("")
+  bannedPhrases String   @default("")
+  commonPhrases String   @default("")
+  examplePosts  String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ContentPillar {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Idea {
+  id        String     @id @default(cuid())
+  title     String
+  rawInput  String     @default("")
+  topic     String     @default("")
+  status    String     @default("captured")
+  priority  String     @default("medium")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  drafts    Draft[]
+  agentRuns AgentRun[]
+}
+
+model Draft {
+  id        String     @id @default(cuid())
+  ideaId    String?
+  idea      Idea?      @relation(fields: [ideaId], references: [id], onDelete: SetNull)
+  platform  String     @default("x")
+  content   String
+  status    String     @default("draft")
+  scoreJson String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  agentRuns AgentRun[]
+}
+
+model AgentRun {
+  id            String       @id @default(cuid())
+  ideaId        String?
+  idea          Idea?        @relation(fields: [ideaId], references: [id], onDelete: SetNull)
+  draftId       String?
+  draft         Draft?       @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  agentConfigId String?
+  agentConfig   AgentConfig? @relation(fields: [agentConfigId], references: [id], onDelete: SetNull)
+  agentName     String
+  inputJson     String       @default("{}")
+  outputJson    String       @default("{}")
+  model         String?
+  temperature   Float?
+  status        String       @default("queued")
+  errorMessage  String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model AiProviderConfig {
+  id           String        @id @default(cuid())
+  name         String
+  provider     String        @default("openai")
+  baseUrl      String        @default("https://api.openai.com/v1")
+  apiKey       String
+  defaultModel String
+  temperature  Float         @default(0.7)
+  isDefault    Boolean       @default(false)
+  isEnabled    Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  agents       AgentConfig[]
+}
+
+model AgentConfig {
+  id               String            @id @default(cuid())
+  name             String
+  description      String            @default("")
+  role             String            @default("writer")
+  goal             String            @default("")
+  systemPrompt     String
+  outputFormat     String            @default("")
+  providerConfigId String?
+  providerConfig   AiProviderConfig? @relation(fields: [providerConfigId], references: [id], onDelete: SetNull)
+  model            String?
+  temperature      Float?
+  isEnabled        Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  runs             AgentRun[]
+}
