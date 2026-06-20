@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Filter, Plus, X } from "lucide-react";
+import { Filter, Inbox, Plus, X } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -65,12 +65,20 @@ export default async function IdeasPage({
         title="Ideas"
         description="Capture raw thoughts before they become drafts."
         actions={
-          <Button asChild>
-            <Link href="/ideas/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New idea
-            </Link>
-          </Button>
+          <>
+            <Button asChild>
+              <Link href="/ideas/inbox">
+                <Inbox className="mr-2 h-4 w-4" />
+                Idea Inbox
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/ideas/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Full form
+              </Link>
+            </Button>
+          </>
         }
       />
 
@@ -137,7 +145,7 @@ export default async function IdeasPage({
           }
           action={
             <Button asChild>
-              <Link href="/ideas/new">Capture your first idea</Link>
+              <Link href="/ideas/inbox">Capture your first idea</Link>
             </Button>
           }
         />

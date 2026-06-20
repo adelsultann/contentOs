@@ -33,7 +33,13 @@ export default async function DraftsPage({
     prisma.draft.findMany({
       where,
       orderBy: { updatedAt: "desc" },
-      include: { idea: { include: { contentPillar: true } } }
+      include: {
+        idea: { include: { contentPillar: true } },
+        analytics: {
+          orderBy: { recordedAt: "desc" },
+          take: 1
+        }
+      }
     }),
     prisma.contentPillar.findMany({
       orderBy: { name: "asc" },
@@ -92,29 +98,43 @@ export default async function DraftsPage({
         />
       ) : (
         <div className="grid gap-3">
-          {drafts.map((draft) => (
-            <Card key={draft.id}>
-              <CardContent className="p-5">
-                <Link href={`/drafts/${draft.id}`} className="block">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h2 className="font-semibold">{draft.idea?.title ?? "Standalone draft"}</h2>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {draft.platform} - Updated {formatDate(draft.updatedAt)}
-                      </p>
+          {drafts.map((draft) => {
+            const latestAnalytics = draft.analytics[0];
+            const engagements = latestAnalytics
+              ? latestAnalytics.likes + latestAnalytics.comments + latestAnalytics.shares + latestAnalytics.saves
+              : 0;
+
+            return (
+              <Card key={draft.id}>
+                <CardContent className="p-5">
+                  <Link href={`/drafts/${draft.id}`} className="block">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h2 className="font-semibold">{draft.idea?.title ?? "Standalone draft"}</h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {draft.platform} - Updated {formatDate(draft.updatedAt)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge>{draft.idea?.contentPillar?.name ?? "no pillar"}</Badge>
+                        <Badge>{draft.status}</Badge>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge>{draft.idea?.contentPillar?.name ?? "no pillar"}</Badge>
-                      <Badge>{draft.status}</Badge>
-                    </div>
-                  </div>
-                  <p className="mt-4 line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {draft.content}
-                  </p>
-                </Link>
-              </CardContent>
-            </Card>
-          ))}
+                    <p className="mt-4 line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
+                      {draft.content}
+                    </p>
+                    {latestAnalytics ? (
+                      <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <span className="rounded-md border px-2 py-1">{latestAnalytics.views} views</span>
+                        <span className="rounded-md border px-2 py-1">{engagements} engagements</span>
+                        <span className="rounded-md border px-2 py-1">{latestAnalytics.saves} saves</span>
+                      </div>
+                    ) : null}
+                  </Link>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

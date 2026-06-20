@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   FileText,
   Gauge,
+  Inbox,
   LayoutList,
   Lightbulb,
   Menu,
@@ -18,9 +20,11 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
+  { href: "/ideas/inbox", label: "Idea Inbox", icon: Inbox },
   { href: "/ideas", label: "Ideas", icon: Lightbulb },
   { href: "/content-pillars", label: "Content Pillars", icon: LayoutList },
   { href: "/drafts", label: "Drafts", icon: FileText },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/style-profile", label: "Style Profile", icon: PenLine },
   { href: "/agents", label: "Agents", icon: Workflow },
   { href: "/agent-runs", label: "Agent Runs", icon: PlayCircle },

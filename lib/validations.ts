@@ -17,6 +17,14 @@ export const ideaSchema = z.object({
   priority: z.enum(ideaPriorities).default("medium")
 });
 
+export const ideaInboxSchema = z.object({
+  rawInput: z
+    .string()
+    .trim()
+    .min(1, "Capture at least one rough thought")
+    .max(5000, "Keep one inbox capture under 5000 characters")
+});
+
 export const contentPillarSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(80, "Keep names under 80 characters"),
   description: z.string().trim().optional().default("")
@@ -47,6 +55,22 @@ export const draftRewriteSchema = z.object({
     .trim()
     .min(1, "Tell the agent what to adjust")
     .max(2000, "Keep adjustment notes under 2000 characters")
+});
+
+const metricSchema = z.coerce
+  .number()
+  .int("Use whole numbers")
+  .min(0, "Metrics cannot be negative")
+  .max(999999999, "Metric is too large")
+  .default(0);
+
+export const draftAnalyticsSchema = z.object({
+  views: metricSchema,
+  likes: metricSchema,
+  comments: metricSchema,
+  shares: metricSchema,
+  saves: metricSchema,
+  notes: z.string().trim().max(2000, "Keep notes under 2000 characters").optional().default("")
 });
 
 export const styleProfileSchema = z.object({
@@ -106,10 +130,12 @@ export const agentConfigSchema = z.object({
 });
 
 export type IdeaFormValues = z.infer<typeof ideaSchema>;
+export type IdeaInboxFormValues = z.infer<typeof ideaInboxSchema>;
 export type ContentPillarFormValues = z.infer<typeof contentPillarSchema>;
 export type DraftFormValues = z.infer<typeof draftSchema>;
 export type DraftThreadFormValues = z.infer<typeof draftThreadSchema>;
 export type DraftRewriteFormValues = z.infer<typeof draftRewriteSchema>;
+export type DraftAnalyticsFormValues = z.infer<typeof draftAnalyticsSchema>;
 export type StyleProfileFormValues = z.infer<typeof styleProfileSchema>;
 export type AiProviderConfigFormValues = z.infer<typeof aiProviderConfigSchema>;
 export type AgentConfigFormValues = z.infer<typeof agentConfigSchema>;

@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { runDraftAdjustmentAgent } from "@/lib/agents/run-draft-adjustment-agent";
-import { combineDraftPosts } from "@/lib/draft-posts";
+import { combineDraftPosts, splitDraftContent } from "@/lib/draft-posts";
 import { prisma } from "@/lib/prisma";
 import {
+  draftAnalyticsSchema,
   draftRewriteSchema,
   draftSchema,
   draftThreadSchema,
+  type DraftAnalyticsFormValues,
   type DraftFormValues,
   type DraftThreadFormValues
 } from "@/lib/validations";
@@ -89,6 +91,42 @@ export async function rewriteDraftWithAgent(id: string, values: { instructions: 
     }));
 
     await prisma.$transaction(async (tx) => {
+      const currentDraft = await tx.draft.findUnique({
+        where: { id },
+        include: {
+          posts: {
+            orderBy: { position: "asc" }
+          },
+          versions: {
+            orderBy: { version: "desc" },
+            take: 1,
+            select: { version: true }
+          }
+        }
+      });
+
+      if (!currentDraft) {
+        throw new Error("Draft not found.");
+      }
+
+      const currentPosts =
+        currentDraft.posts.length > 0
+          ? currentDraft.posts.map((post) => ({ content: post.content }))
+          : splitDraftContent(currentDraft.content).map((content) => ({ content }));
+      const nextVersion = (currentDraft.versions[0]?.version ?? 0) + 1;
+
+      await tx.draftVersion.create({
+        data: {
+          draftId: id,
+          version: nextVersion,
+          platform: currentDraft.platform,
+          status: currentDraft.status,
+          content: currentDraft.content,
+          postsJson: JSON.stringify(currentPosts),
+          rewriteNotes: parsed.data.instructions
+        }
+      });
+
       await tx.draft.update({
         where: { id },
         data: {
@@ -120,6 +158,102 @@ export async function rewriteDraftWithAgent(id: string, values: { instructions: 
       error: error instanceof Error ? error.message : "Draft rewrite failed."
     };
   }
+}
+
+function parseVersionPosts(postsJson: string, fallbackContent: string) {
+  try {
+    const parsed = JSON.parse(postsJson) as unknown;
+
+    if (
+      Array.isArray(parsed) &&
+      parsed.every(
+        (post) =>
+          typeof post === "object" &&
+          post !== null &&
+          !Array.isArray(post) &&
+          typeof (post as Record<string, unknown>).content === "string"
+      )
+    ) {
+      return parsed.map((post) => ({
+        content: (post as { content: string }).content
+      }));
+    }
+  } catch {
+  }
+
+  return splitDraftContent(fallbackContent).map((content) => ({ content }));
+}
+
+export async function restoreDraftVersion(draftId: string, versionId: string) {
+  const version = await prisma.draftVersion.findFirst({
+    where: {
+      id: versionId,
+      draftId
+    }
+  });
+
+  if (!version) {
+    throw new Error("Draft version not found.");
+  }
+
+  const posts = parseVersionPosts(version.postsJson, version.content);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.draft.update({
+      where: { id: draftId },
+      data: {
+        platform: version.platform,
+        status: version.status,
+        content: version.content
+      }
+    });
+
+    await tx.draftPost.deleteMany({
+      where: { draftId }
+    });
+
+    await tx.draftPost.createMany({
+      data: posts.map((post, index) => ({
+        draftId,
+        position: index + 1,
+        content: post.content
+      }))
+    });
+  });
+
+  revalidatePath("/drafts");
+  revalidatePath(`/drafts/${draftId}`);
+  revalidatePath("/dashboard");
+}
+
+export async function recordDraftAnalytics(id: string, values: DraftAnalyticsFormValues) {
+  const parsed = draftAnalyticsSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return { error: "Please check the performance metrics and try again." };
+  }
+
+  const draft = await prisma.draft.findUnique({
+    where: { id },
+    select: { id: true }
+  });
+
+  if (!draft) {
+    return { error: "Draft not found." };
+  }
+
+  await prisma.draftAnalytics.create({
+    data: {
+      draftId: id,
+      ...parsed.data
+    }
+  });
+
+  revalidatePath("/analytics");
+  revalidatePath("/drafts");
+  revalidatePath(`/drafts/${id}`);
+  revalidatePath("/dashboard");
+  return { ok: true };
 }
 
 export async function deleteDraft(id: string) {

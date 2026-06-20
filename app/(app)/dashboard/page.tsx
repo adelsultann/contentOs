@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Lightbulb, PlayCircle, Send } from "lucide-react";
+import { BarChart3, Eye, FileText, Lightbulb, Send } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -9,11 +9,24 @@ import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const [totalIdeas, totalDrafts, readyDrafts, agentRuns, recentIdeas, recentDrafts] = await Promise.all([
+  const [
+    totalIdeas,
+    totalDrafts,
+    readyDrafts,
+    trackedDrafts,
+    analyticsTotals,
+    recentIdeas,
+    recentDrafts
+  ] = await Promise.all([
     prisma.idea.count(),
     prisma.draft.count(),
     prisma.draft.count({ where: { status: "ready" } }),
-    prisma.agentRun.count(),
+    prisma.draft.count({ where: { analytics: { some: {} } } }),
+    prisma.draftAnalytics.aggregate({
+      _sum: {
+        views: true
+      }
+    }),
     prisma.idea.findMany({
       orderBy: { createdAt: "desc" },
       take: 5
@@ -29,7 +42,8 @@ export default async function DashboardPage() {
     { label: "Total ideas", value: totalIdeas, icon: Lightbulb },
     { label: "Total drafts", value: totalDrafts, icon: FileText },
     { label: "Ready drafts", value: readyDrafts, icon: Send },
-    { label: "Agent runs", value: agentRuns, icon: PlayCircle }
+    { label: "Tracked posts", value: trackedDrafts, icon: BarChart3 },
+    { label: "Total views", value: analyticsTotals._sum.views ?? 0, icon: Eye }
   ];
 
   return (
@@ -44,7 +58,7 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -112,7 +126,7 @@ export default async function DashboardPage() {
                       <Badge>{draft.status}</Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {draft.platform} · {formatDate(draft.createdAt)}
+                      {draft.platform} - {formatDate(draft.createdAt)}
                     </p>
                   </Link>
                 ))}

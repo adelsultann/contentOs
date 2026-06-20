@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ideaSchema, type IdeaFormValues } from "@/lib/validations";
+import {
+  ideaInboxSchema,
+  ideaSchema,
+  type IdeaFormValues,
+  type IdeaInboxFormValues
+} from "@/lib/validations";
 
 function toIdeaData(values: IdeaFormValues) {
   return {
@@ -14,6 +19,19 @@ function toIdeaData(values: IdeaFormValues) {
     status: values.status,
     priority: values.priority
   };
+}
+
+function titleFromRawInput(rawInput: string) {
+  const firstLine = rawInput
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+
+  if (!firstLine) {
+    return "Untitled idea";
+  }
+
+  return firstLine.length > 120 ? `${firstLine.slice(0, 117)}...` : firstLine;
 }
 
 export async function createIdea(values: IdeaFormValues) {
@@ -28,6 +46,30 @@ export async function createIdea(values: IdeaFormValues) {
   });
 
   revalidatePath("/ideas");
+  revalidatePath("/dashboard");
+  redirect(`/ideas/${idea.id}`);
+}
+
+export async function captureInboxIdea(values: IdeaInboxFormValues) {
+  const parsed = ideaInboxSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return { error: "Capture at least one rough thought and try again." };
+  }
+
+  const idea = await prisma.idea.create({
+    data: {
+      title: titleFromRawInput(parsed.data.rawInput),
+      rawInput: parsed.data.rawInput,
+      topic: "",
+      contentPillarId: null,
+      status: "captured",
+      priority: "medium"
+    }
+  });
+
+  revalidatePath("/ideas");
+  revalidatePath("/ideas/inbox");
   revalidatePath("/dashboard");
   redirect(`/ideas/${idea.id}`);
 }
