@@ -1,10 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import type { IdeaQualityScoreOutput } from "@/lib/agents/types";
+import type { ContentAngle, IdeaQualityScoreOutput } from "@/lib/agents/types";
+
+type AngleResult = {
+  ok?: boolean;
+  ideaQuality?: IdeaQualityScoreOutput;
+  angles?: ContentAngle[];
+  blocked?: boolean;
+  error?: string;
+};
 
 type GenerateResult = {
   ok?: boolean;
@@ -50,7 +58,7 @@ function IdeaQualityReport({
         </div>
         {blocked ? (
           <p className="rounded-md border border-destructive/30 px-3 py-1 text-sm text-destructive">
-            Draft not generated
+            Improve before drafting
           </p>
         ) : null}
       </div>
@@ -81,52 +89,144 @@ function IdeaQualityReport({
   );
 }
 
+function AngleChoices({
+  angles,
+  selectedAngle,
+  onSelect
+}: {
+  angles: ContentAngle[];
+  selectedAngle: ContentAngle | null;
+  onSelect: (angle: ContentAngle) => void;
+}) {
+  return (
+    <div className="grid max-w-3xl gap-3">
+      {angles.map((angle) => {
+        const isSelected = selectedAngle?.type === angle.type;
+
+        return (
+          <button
+            key={angle.type}
+            type="button"
+            onClick={() => onSelect(angle)}
+            className={`rounded-lg border p-4 text-left transition hover:bg-muted/40 ${
+              isSelected ? "border-primary bg-primary/5" : "bg-background"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium">{angle.label}</p>
+                <p className="mt-2 text-sm">{angle.angle}</p>
+              </div>
+              {isSelected ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : null}
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">{angle.whyItWorks}</p>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function GenerateDraftButton({
+  onGenerateAngles,
   onGenerate
 }: {
-  onGenerate: () => Promise<GenerateResult>;
+  onGenerateAngles: () => Promise<AngleResult>;
+  onGenerate: (selectedAngle: ContentAngle) => Promise<GenerateResult>;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [pendingLabel, setPendingLabel] = useState("");
   const [error, setError] = useState("");
   const [draftId, setDraftId] = useState("");
   const [blocked, setBlocked] = useState(false);
   const [ideaQuality, setIdeaQuality] = useState<IdeaQualityScoreOutput | null>(null);
+  const [angles, setAngles] = useState<ContentAngle[]>([]);
+  const [selectedAngle, setSelectedAngle] = useState<ContentAngle | null>(null);
+
+  function handleGenerateAngles() {
+    setError("");
+    setDraftId("");
+    setBlocked(false);
+    setIdeaQuality(null);
+    setAngles([]);
+    setSelectedAngle(null);
+    setPendingLabel("Generating angles");
+
+    startTransition(async () => {
+      const result = await onGenerateAngles();
+
+      if (result.error) {
+        setError(result.error);
+        setPendingLabel("");
+        return;
+      }
+
+      setIdeaQuality(result.ideaQuality ?? null);
+      setAngles(result.angles ?? []);
+      setBlocked(Boolean(result.blocked));
+      setPendingLabel("");
+    });
+  }
+
+  function handleGenerateDraft() {
+    if (!selectedAngle) {
+      return;
+    }
+
+    setError("");
+    setDraftId("");
+    setPendingLabel("Writing draft");
+
+    startTransition(async () => {
+      const result = await onGenerate(selectedAngle);
+
+      if (result.error) {
+        setError(result.error);
+        setPendingLabel("");
+        return;
+      }
+
+      if (result.ideaQuality) {
+        setIdeaQuality(result.ideaQuality);
+      }
+
+      setBlocked(Boolean(result.blocked));
+
+      if (result.draftId) {
+        setDraftId(result.draftId);
+      }
+
+      setPendingLabel("");
+    });
+  }
 
   return (
-    <div className="space-y-3">
-      <Button
-        type="button"
-        disabled={isPending}
-        onClick={() => {
-          setError("");
-          setDraftId("");
-          setBlocked(false);
-          setIdeaQuality(null);
-          startTransition(async () => {
-            const result = await onGenerate();
-
-            if (result.error) {
-              setError(result.error);
-              return;
-            }
-
-            if (result.ideaQuality) {
-              setIdeaQuality(result.ideaQuality);
-            }
-
-            setBlocked(Boolean(result.blocked));
-
-            if (result.draftId) {
-              setDraftId(result.draftId);
-            }
-          });
-        }}
-      >
+    <div className="space-y-4">
+      <Button type="button" disabled={isPending} onClick={handleGenerateAngles}>
         <Sparkles className="mr-2 h-4 w-4" />
-        {isPending ? "Scoring idea" : "Score idea and generate"}
+        {isPending && pendingLabel === "Generating angles" ? "Generating angles" : "Generate 3 angles"}
       </Button>
 
       {ideaQuality ? <IdeaQualityReport blocked={blocked} ideaQuality={ideaQuality} /> : null}
+
+      {angles.length > 0 ? (
+        <div className="space-y-3">
+          <AngleChoices angles={angles} selectedAngle={selectedAngle} onSelect={setSelectedAngle} />
+          <Button
+            type="button"
+            disabled={isPending || blocked || !selectedAngle}
+            onClick={handleGenerateDraft}
+          >
+            {isPending && pendingLabel === "Writing draft" ? "Writing draft" : "Generate draft from selected angle"}
+          </Button>
+        </div>
+      ) : null}
+
+      {blocked && angles.length > 0 ? (
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          The angles are available for direction, but this idea needs a sharper raw input before drafting.
+        </p>
+      ) : null}
 
       {draftId ? (
         <p className="text-sm text-muted-foreground">

@@ -1,12 +1,19 @@
-import type { IdeaQualityScoreOutput, PipelineIdea, PipelineStyleProfile } from "@/lib/agents/types";
+import type {
+  ContentAngle,
+  IdeaQualityScoreOutput,
+  PipelineIdea,
+  PipelineStyleProfile
+} from "@/lib/agents/types";
 
 export function createBrainstormPrompt({
   idea,
   ideaQuality,
+  selectedAngle,
   styleProfile
 }: {
   idea: PipelineIdea;
   ideaQuality?: IdeaQualityScoreOutput;
+  selectedAngle?: ContentAngle;
   styleProfile: PipelineStyleProfile;
 }) {
   return `You are the Brainstorm Agent for ContentOS.
@@ -23,6 +30,9 @@ ${JSON.stringify(idea, null, 2)}
 Idea quality score:
 ${ideaQuality ? JSON.stringify(ideaQuality, null, 2) : "Not scored."}
 
+Selected angle:
+${selectedAngle ? JSON.stringify(selectedAngle, null, 2) : "No selected angle."}
+
 Style profile:
 ${JSON.stringify(styleProfile, null, 2)}
 
@@ -34,6 +44,7 @@ Writing constraints:
 - Use technical English terms naturally when needed.
 - Keep the thinking practical, clear, and useful for X content.
 - If an idea quality score is provided, use betterAngle as the preferred direction.
+- If a selected angle is provided, make it the main direction and do not switch to another angle.
 
 Return only valid JSON in this exact shape:
 {

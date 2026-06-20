@@ -118,6 +118,27 @@ function IdeaQualityDetails({ run }: { run: AgentRun }) {
   );
 }
 
+function IdeaAnglesDetails({ run }: { run: AgentRun }) {
+  const output = getOutput(run);
+  const angles = Array.isArray(output?.angles) ? output.angles : [];
+
+  return (
+    <div className="grid gap-3">
+      {angles.map((item, index) => {
+        const angle = asRecord(item);
+
+        return (
+          <div key={index} className="rounded-lg border p-3">
+            <p className="font-medium">{text(angle?.label, "Angle")}</p>
+            <p className="mt-2 text-sm">{text(angle?.angle)}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{text(angle?.whyItWorks)}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function HookDetails({ run }: { run: AgentRun }) {
   const output = getOutput(run);
   const hooks = Array.isArray(output?.hooks) ? output.hooks : [];
@@ -255,6 +276,10 @@ function AgentSpecificDetails({ run }: { run: AgentRun }) {
     return <IdeaQualityDetails run={run} />;
   }
 
+  if (run.agentName === "Idea Angles Agent") {
+    return <IdeaAnglesDetails run={run} />;
+  }
+
   if (run.agentName === "Hook Agent") {
     return <HookDetails run={run} />;
   }
@@ -277,6 +302,7 @@ function AgentSpecificDetails({ run }: { run: AgentRun }) {
 export function PipelineRunDetails({ runs }: { runs: AgentRun[] }) {
   const orderedNames = [
     "Idea Quality Score Agent",
+    "Idea Angles Agent",
     "Brainstorm Agent",
     "Hook Agent",
     "Writer Agent",

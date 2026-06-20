@@ -1,7 +1,9 @@
 import type {
   BrainstormOutput,
+  ContentAngleType,
   EditorOutput,
   HookOutput,
+  IdeaAnglesOutput,
   IdeaQualityScoreOutput,
   ScoreOutput,
   WriterOutput
@@ -19,6 +21,14 @@ function isNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function isContentAngleType(value: unknown): value is ContentAngleType {
+  return (
+    value === "beginner_explanation" ||
+    value === "personal_story" ||
+    value === "technical_deep_dive"
+  );
+}
+
 export function isBrainstormOutput(value: unknown): value is BrainstormOutput {
   if (!isRecord(value)) {
     return false;
@@ -32,6 +42,32 @@ export function isBrainstormOutput(value: unknown): value is BrainstormOutput {
     typeof value.contentPillarSuggestion === "string" &&
     typeof value.whyThisCouldWork === "string"
   );
+}
+
+export function isIdeaAnglesOutput(value: unknown): value is IdeaAnglesOutput {
+  if (!isRecord(value) || !Array.isArray(value.angles) || value.angles.length !== 3) {
+    return false;
+  }
+
+  const angles = value.angles;
+  const expectedTypes: ContentAngleType[] = [
+    "beginner_explanation",
+    "personal_story",
+    "technical_deep_dive"
+  ];
+
+  return expectedTypes.every((type, index) => {
+    const angle = angles[index];
+
+    return (
+      isRecord(angle) &&
+      angle.type === type &&
+      isContentAngleType(angle.type) &&
+      typeof angle.label === "string" &&
+      typeof angle.angle === "string" &&
+      typeof angle.whyItWorks === "string"
+    );
+  });
 }
 
 export function isIdeaQualityScoreOutput(value: unknown): value is IdeaQualityScoreOutput {

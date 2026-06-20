@@ -2,10 +2,17 @@ import type { Draft } from "@prisma/client";
 import { runBrainstormAgent } from "@/lib/agents/run-brainstorm-agent";
 import { runEditorAgent } from "@/lib/agents/run-editor-agent";
 import { runHookAgent } from "@/lib/agents/run-hook-agent";
+import { runIdeaAnglesAgent } from "@/lib/agents/run-idea-angles-agent";
 import { runIdeaQualityScoreAgent } from "@/lib/agents/run-idea-quality-score-agent";
 import { runScoreAgent } from "@/lib/agents/run-score-agent";
 import { runWriterAgent } from "@/lib/agents/run-writer-agent";
-import type { IdeaQualityScoreOutput, PipelineIdea, PipelineStyleProfile } from "@/lib/agents/types";
+import type {
+  ContentAngle,
+  IdeaAnglesOutput,
+  IdeaQualityScoreOutput,
+  PipelineIdea,
+  PipelineStyleProfile
+} from "@/lib/agents/types";
 import { prisma } from "@/lib/prisma";
 
 function emptyStyleProfile(): PipelineStyleProfile {
@@ -30,7 +37,18 @@ export type ContentPipelineResult =
       ideaQuality: IdeaQualityScoreOutput;
     };
 
-export async function runContentPipeline(ideaId: string): Promise<ContentPipelineResult> {
+type PipelineContext = {
+  pipelineIdea: PipelineIdea;
+  pipelineStyleProfile: PipelineStyleProfile;
+};
+
+export type IdeaAnglePreparationResult = {
+  ideaQuality: IdeaQualityScoreOutput;
+  angles: IdeaAnglesOutput;
+  blocked: boolean;
+};
+
+async function getPipelineContext(ideaId: string): Promise<PipelineContext> {
   const idea = await prisma.idea.findUnique({
     where: { id: ideaId }
   });
@@ -62,6 +80,39 @@ export async function runContentPipeline(ideaId: string): Promise<ContentPipelin
       }
     : emptyStyleProfile();
 
+  return {
+    pipelineIdea,
+    pipelineStyleProfile
+  };
+}
+
+export async function prepareIdeaAngles(ideaId: string): Promise<IdeaAnglePreparationResult> {
+  const { pipelineIdea, pipelineStyleProfile } = await getPipelineContext(ideaId);
+
+  const ideaQuality = await runIdeaQualityScoreAgent({
+    idea: pipelineIdea,
+    styleProfile: pipelineStyleProfile
+  });
+
+  const angles = await runIdeaAnglesAgent({
+    idea: pipelineIdea,
+    ideaQuality: ideaQuality.data,
+    styleProfile: pipelineStyleProfile
+  });
+
+  return {
+    ideaQuality: ideaQuality.data,
+    angles: angles.data,
+    blocked: ideaQuality.data.recommendation === "improve_idea" || ideaQuality.data.overallScore < 7
+  };
+}
+
+export async function runContentPipeline(
+  ideaId: string,
+  selectedAngle?: ContentAngle
+): Promise<ContentPipelineResult> {
+  const { pipelineIdea, pipelineStyleProfile } = await getPipelineContext(ideaId);
+
   const runIds: string[] = [];
 
   const ideaQuality = await runIdeaQualityScoreAgent({
@@ -81,6 +132,7 @@ export async function runContentPipeline(ideaId: string): Promise<ContentPipelin
   const brainstorm = await runBrainstormAgent({
     idea: pipelineIdea,
     ideaQuality: ideaQuality.data,
+    selectedAngle,
     styleProfile: pipelineStyleProfile
   });
   runIds.push(brainstorm.runId);
@@ -116,7 +168,7 @@ export async function runContentPipeline(ideaId: string): Promise<ContentPipelin
 
   const draft = await prisma.draft.create({
     data: {
-      ideaId: idea.id,
+      ideaId: pipelineIdea.id,
       platform: "X",
       content: editor.data.editedDraft,
       status: score.data.recommendation === "ready" ? "ready" : "needs_edit",

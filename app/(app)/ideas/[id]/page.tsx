@@ -6,7 +6,7 @@ import { IdeaForm } from "@/components/idea-form";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { generateDraftFromIdea } from "@/lib/actions/generate-draft-from-idea";
+import { generateAnglesForIdea, generateDraftFromIdea } from "@/lib/actions/generate-draft-from-idea";
 import { deleteIdea, updateIdea } from "@/lib/actions/ideas";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/utils";
@@ -56,11 +56,14 @@ export default async function IdeaDetailPage({ params }: { params: Promise<{ id:
         <CardHeader>
           <CardTitle>Agent pipeline</CardTitle>
           <CardDescription>
-            Score the raw idea, then run Brainstorm, Hook, Writer, Editor, and Score agents.
+            Score the raw idea, generate three angles, then draft from the selected angle.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <GenerateDraftButton onGenerate={generateDraftFromIdea.bind(null, idea.id)} />
+          <GenerateDraftButton
+            onGenerateAngles={generateAnglesForIdea.bind(null, idea.id)}
+            onGenerate={generateDraftFromIdea.bind(null, idea.id)}
+          />
         </CardContent>
       </Card>
 

@@ -38,6 +38,19 @@ export type IdeaQualityScoreOutput = {
   recommendation: "generate_draft" | "improve_idea";
 };
 
+export type ContentAngleType = "beginner_explanation" | "personal_story" | "technical_deep_dive";
+
+export type ContentAngle = {
+  type: ContentAngleType;
+  label: string;
+  angle: string;
+  whyItWorks: string;
+};
+
+export type IdeaAnglesOutput = {
+  angles: ContentAngle[];
+};
+
 export type HookOutput = {
   hooks: Array<{
     hook: string;
