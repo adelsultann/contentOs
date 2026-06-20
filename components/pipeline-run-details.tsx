@@ -83,6 +83,41 @@ function BrainstormDetails({ run }: { run: AgentRun }) {
   );
 }
 
+function IdeaQualityDetails({ run }: { run: AgentRun }) {
+  const output = getOutput(run);
+  const scores = asRecord(output?.scores);
+  const scoreRows = [
+    ["Clarity", number(scores?.clarity)],
+    ["Usefulness", number(scores?.usefulness)],
+    ["Originality", number(scores?.originality)],
+    ["Personal experience", number(scores?.personalExperience)],
+    ["Job-opportunity value", number(scores?.jobOpportunityValue)]
+  ] as const;
+  const overallScore = number(output?.overallScore);
+
+  return (
+    <div className="grid gap-4">
+      <div className="rounded-lg border p-4">
+        <p className="text-sm text-muted-foreground">Idea score</p>
+        <div className="mt-1 flex items-end gap-3">
+          <p className={`text-4xl font-semibold ${scoreTone(overallScore)}`}>{overallScore ?? "-"}</p>
+          <Badge>{text(output?.recommendation, "no recommendation")}</Badge>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {scoreRows.map(([label, value]) => (
+          <div key={label} className="rounded-lg border p-3">
+            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className={`mt-1 text-2xl font-semibold ${scoreTone(value)}`}>{value ?? "-"}</p>
+          </div>
+        ))}
+      </div>
+      <InfoBlock label="Problem" value={text(output?.problem)} />
+      <InfoBlock label="Better angle" value={text(output?.betterAngle)} />
+    </div>
+  );
+}
+
 function HookDetails({ run }: { run: AgentRun }) {
   const output = getOutput(run);
   const hooks = Array.isArray(output?.hooks) ? output.hooks : [];
@@ -216,6 +251,10 @@ function AgentSpecificDetails({ run }: { run: AgentRun }) {
     return <BrainstormDetails run={run} />;
   }
 
+  if (run.agentName === "Idea Quality Score Agent") {
+    return <IdeaQualityDetails run={run} />;
+  }
+
   if (run.agentName === "Hook Agent") {
     return <HookDetails run={run} />;
   }
@@ -236,7 +275,14 @@ function AgentSpecificDetails({ run }: { run: AgentRun }) {
 }
 
 export function PipelineRunDetails({ runs }: { runs: AgentRun[] }) {
-  const orderedNames = ["Brainstorm Agent", "Hook Agent", "Writer Agent", "Editor Agent", "Score Agent"];
+  const orderedNames = [
+    "Idea Quality Score Agent",
+    "Brainstorm Agent",
+    "Hook Agent",
+    "Writer Agent",
+    "Editor Agent",
+    "Score Agent"
+  ];
   const orderedRuns = [...runs].sort((a, b) => {
     const byName = orderedNames.indexOf(a.agentName) - orderedNames.indexOf(b.agentName);
 

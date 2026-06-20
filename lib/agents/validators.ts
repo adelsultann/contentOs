@@ -2,6 +2,7 @@ import type {
   BrainstormOutput,
   EditorOutput,
   HookOutput,
+  IdeaQualityScoreOutput,
   ScoreOutput,
   WriterOutput
 } from "@/lib/agents/types";
@@ -30,6 +31,24 @@ export function isBrainstormOutput(value: unknown): value is BrainstormOutput {
     typeof value.targetAudience === "string" &&
     typeof value.contentPillarSuggestion === "string" &&
     typeof value.whyThisCouldWork === "string"
+  );
+}
+
+export function isIdeaQualityScoreOutput(value: unknown): value is IdeaQualityScoreOutput {
+  if (!isRecord(value) || !isRecord(value.scores)) {
+    return false;
+  }
+
+  return (
+    isNumber(value.scores.clarity) &&
+    isNumber(value.scores.usefulness) &&
+    isNumber(value.scores.originality) &&
+    isNumber(value.scores.personalExperience) &&
+    isNumber(value.scores.jobOpportunityValue) &&
+    isNumber(value.overallScore) &&
+    typeof value.problem === "string" &&
+    typeof value.betterAngle === "string" &&
+    (value.recommendation === "generate_draft" || value.recommendation === "improve_idea")
   );
 }
 

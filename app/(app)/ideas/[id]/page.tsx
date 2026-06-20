@@ -13,18 +13,25 @@ import { formatDate } from "@/lib/utils";
 
 export default async function IdeaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const idea = await prisma.idea.findUnique({
-    where: { id },
-    include: {
-      drafts: {
-        orderBy: { updatedAt: "desc" }
-      },
-      agentRuns: {
-        orderBy: { createdAt: "desc" },
-        take: 5
+  const [idea, contentPillars] = await Promise.all([
+    prisma.idea.findUnique({
+      where: { id },
+      include: {
+        contentPillar: true,
+        drafts: {
+          orderBy: { updatedAt: "desc" }
+        },
+        agentRuns: {
+          orderBy: { createdAt: "desc" },
+          take: 5
+        }
       }
-    }
-  });
+    }),
+    prisma.contentPillar.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true }
+    })
+  ]);
 
   if (!idea) {
     notFound();
@@ -34,13 +41,14 @@ export default async function IdeaDetailPage({ params }: { params: Promise<{ id:
     <div className="space-y-6">
       <PageHeader
         title={idea.title}
-        description={`Created ${formatDate(idea.createdAt)} · Updated ${formatDate(idea.updatedAt)}`}
+        description={`Created ${formatDate(idea.createdAt)} - Updated ${formatDate(idea.updatedAt)}`}
         actions={<DeleteButton label="idea" onDelete={deleteIdea.bind(null, idea.id)} />}
       />
 
       <div className="flex flex-wrap gap-2">
         <Badge>{idea.status}</Badge>
         <Badge>{idea.priority}</Badge>
+        <Badge>{idea.contentPillar?.name ?? "no pillar"}</Badge>
         <Badge>{idea.topic || "no topic"}</Badge>
       </div>
 
@@ -48,7 +56,7 @@ export default async function IdeaDetailPage({ params }: { params: Promise<{ id:
         <CardHeader>
           <CardTitle>Agent pipeline</CardTitle>
           <CardDescription>
-            Run Brainstorm, Hook, Writer, Editor, and Score agents in a controlled sequence.
+            Score the raw idea, then run Brainstorm, Hook, Writer, Editor, and Score agents.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -67,9 +75,11 @@ export default async function IdeaDetailPage({ params }: { params: Promise<{ id:
               title: idea.title,
               rawInput: idea.rawInput,
               topic: idea.topic,
+              contentPillarId: idea.contentPillarId ?? "",
               status: idea.status as "captured" | "researching" | "ready" | "archived",
               priority: idea.priority as "low" | "medium" | "high"
             }}
+            contentPillars={contentPillars}
             onSubmit={updateIdea.bind(null, idea.id)}
             submitLabel="Save idea"
           />
@@ -93,7 +103,7 @@ export default async function IdeaDetailPage({ params }: { params: Promise<{ id:
                     <Badge>{draft.status}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {draft.platform} · {formatDate(draft.updatedAt)}
+                    {draft.platform} - {formatDate(draft.updatedAt)}
                   </p>
                 </Link>
               ))}

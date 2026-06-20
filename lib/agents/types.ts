@@ -24,6 +24,20 @@ export type BrainstormOutput = {
   whyThisCouldWork: string;
 };
 
+export type IdeaQualityScoreOutput = {
+  scores: {
+    clarity: number;
+    usefulness: number;
+    originality: number;
+    personalExperience: number;
+    jobOpportunityValue: number;
+  };
+  overallScore: number;
+  problem: string;
+  betterAngle: string;
+  recommendation: "generate_draft" | "improve_idea";
+};
+
 export type HookOutput = {
   hooks: Array<{
     hook: string;

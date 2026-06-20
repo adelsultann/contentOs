@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   FileText,
   Gauge,
+  LayoutList,
   Lightbulb,
   Menu,
   PenLine,
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/ideas", label: "Ideas", icon: Lightbulb },
+  { href: "/content-pillars", label: "Content Pillars", icon: LayoutList },
   { href: "/drafts", label: "Drafts", icon: FileText },
   { href: "/style-profile", label: "Style Profile", icon: PenLine },
   { href: "/agents", label: "Agents", icon: Workflow },

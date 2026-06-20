@@ -2,9 +2,10 @@ import type { Draft } from "@prisma/client";
 import { runBrainstormAgent } from "@/lib/agents/run-brainstorm-agent";
 import { runEditorAgent } from "@/lib/agents/run-editor-agent";
 import { runHookAgent } from "@/lib/agents/run-hook-agent";
+import { runIdeaQualityScoreAgent } from "@/lib/agents/run-idea-quality-score-agent";
 import { runScoreAgent } from "@/lib/agents/run-score-agent";
 import { runWriterAgent } from "@/lib/agents/run-writer-agent";
-import type { PipelineIdea, PipelineStyleProfile } from "@/lib/agents/types";
+import type { IdeaQualityScoreOutput, PipelineIdea, PipelineStyleProfile } from "@/lib/agents/types";
 import { prisma } from "@/lib/prisma";
 
 function emptyStyleProfile(): PipelineStyleProfile {
@@ -19,7 +20,17 @@ function emptyStyleProfile(): PipelineStyleProfile {
   };
 }
 
-export async function runContentPipeline(ideaId: string): Promise<Draft> {
+export type ContentPipelineResult =
+  | {
+      draft: Draft;
+      ideaQuality: IdeaQualityScoreOutput;
+    }
+  | {
+      draft: null;
+      ideaQuality: IdeaQualityScoreOutput;
+    };
+
+export async function runContentPipeline(ideaId: string): Promise<ContentPipelineResult> {
   const idea = await prisma.idea.findUnique({
     where: { id: ideaId }
   });
@@ -53,8 +64,23 @@ export async function runContentPipeline(ideaId: string): Promise<Draft> {
 
   const runIds: string[] = [];
 
+  const ideaQuality = await runIdeaQualityScoreAgent({
+    idea: pipelineIdea,
+    styleProfile: pipelineStyleProfile
+  });
+
+  if (ideaQuality.data.recommendation === "improve_idea" || ideaQuality.data.overallScore < 7) {
+    return {
+      draft: null,
+      ideaQuality: ideaQuality.data
+    };
+  }
+
+  runIds.push(ideaQuality.runId);
+
   const brainstorm = await runBrainstormAgent({
     idea: pipelineIdea,
+    ideaQuality: ideaQuality.data,
     styleProfile: pipelineStyleProfile
   });
   runIds.push(brainstorm.runId);
@@ -115,5 +141,8 @@ export async function runContentPipeline(ideaId: string): Promise<Draft> {
     }
   });
 
-  return draft;
+  return {
+    draft,
+    ideaQuality: ideaQuality.data
+  };
 }

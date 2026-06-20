@@ -1,5 +1,6 @@
 "use client";
 
+import type { ContentPillar } from "@prisma/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save } from "lucide-react";
 import { useState, useTransition } from "react";
@@ -14,10 +15,12 @@ import { ideaSchema, type IdeaFormValues } from "@/lib/validations";
 
 export function IdeaForm({
   defaultValues,
+  contentPillars = [],
   onSubmit,
   submitLabel
 }: {
   defaultValues?: Partial<IdeaFormValues>;
+  contentPillars?: Pick<ContentPillar, "id" | "name">[];
   onSubmit: (values: IdeaFormValues) => Promise<{ error?: string } | void>;
   submitLabel: string;
 }) {
@@ -33,6 +36,7 @@ export function IdeaForm({
       title: "",
       rawInput: "",
       topic: "",
+      contentPillarId: "",
       status: "captured",
       priority: "medium",
       ...defaultValues
@@ -63,9 +67,19 @@ export function IdeaForm({
         />
       </Field>
 
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-4">
         <Field label="Topic" error={errors.topic?.message}>
           <Input placeholder="Founder lessons" {...register("topic")} />
+        </Field>
+        <Field label="Content pillar" error={errors.contentPillarId?.message}>
+          <Select {...register("contentPillarId")}>
+            <option value="">No pillar</option>
+            {contentPillars.map((pillar) => (
+              <option key={pillar.id} value={pillar.id}>
+                {pillar.name}
+              </option>
+            ))}
+          </Select>
         </Field>
         <Field label="Status" error={errors.status?.message}>
           <Select {...register("status")}>

@@ -12,8 +12,14 @@ export const ideaSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(160, "Keep titles under 160 characters"),
   rawInput: z.string().trim().optional().default(""),
   topic: z.string().trim().optional().default(""),
+  contentPillarId: z.string().trim().optional().default(""),
   status: z.enum(ideaStatuses).default("captured"),
   priority: z.enum(ideaPriorities).default("medium")
+});
+
+export const contentPillarSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80, "Keep names under 80 characters"),
+  description: z.string().trim().optional().default("")
 });
 
 export const draftSchema = z.object({
@@ -100,6 +106,7 @@ export const agentConfigSchema = z.object({
 });
 
 export type IdeaFormValues = z.infer<typeof ideaSchema>;
+export type ContentPillarFormValues = z.infer<typeof contentPillarSchema>;
 export type DraftFormValues = z.infer<typeof draftSchema>;
 export type DraftThreadFormValues = z.infer<typeof draftThreadSchema>;
 export type DraftRewriteFormValues = z.infer<typeof draftRewriteSchema>;

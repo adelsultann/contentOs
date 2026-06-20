@@ -5,6 +5,17 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ideaSchema, type IdeaFormValues } from "@/lib/validations";
 
+function toIdeaData(values: IdeaFormValues) {
+  return {
+    title: values.title,
+    rawInput: values.rawInput,
+    topic: values.topic,
+    contentPillarId: values.contentPillarId || null,
+    status: values.status,
+    priority: values.priority
+  };
+}
+
 export async function createIdea(values: IdeaFormValues) {
   const parsed = ideaSchema.safeParse(values);
 
@@ -13,7 +24,7 @@ export async function createIdea(values: IdeaFormValues) {
   }
 
   const idea = await prisma.idea.create({
-    data: parsed.data
+    data: toIdeaData(parsed.data)
   });
 
   revalidatePath("/ideas");
@@ -30,11 +41,12 @@ export async function updateIdea(id: string, values: IdeaFormValues) {
 
   await prisma.idea.update({
     where: { id },
-    data: parsed.data
+    data: toIdeaData(parsed.data)
   });
 
   revalidatePath("/ideas");
   revalidatePath(`/ideas/${id}`);
+  revalidatePath("/drafts");
   revalidatePath("/dashboard");
   redirect(`/ideas/${id}`);
 }

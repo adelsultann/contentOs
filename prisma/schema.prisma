@@ -26,19 +26,24 @@ model ContentPillar {
   description String   @default("")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  ideas       Idea[]
 }
 
 model Idea {
-  id        String     @id @default(cuid())
-  title     String
-  rawInput  String     @default("")
-  topic     String     @default("")
-  status    String     @default("captured")
-  priority  String     @default("medium")
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  drafts    Draft[]
-  agentRuns AgentRun[]
+  id              String         @id @default(cuid())
+  title           String
+  rawInput        String         @default("")
+  topic           String         @default("")
+  status          String         @default("captured")
+  priority        String         @default("medium")
+  contentPillarId String?
+  contentPillar   ContentPillar? @relation(fields: [contentPillarId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  drafts          Draft[]
+  agentRuns       AgentRun[]
+
+  @@index([contentPillarId])
 }
 
 model Draft {

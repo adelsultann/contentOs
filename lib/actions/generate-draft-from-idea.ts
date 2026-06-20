@@ -5,18 +5,29 @@ import { runContentPipeline } from "@/lib/agents/run-content-pipeline";
 
 export async function generateDraftFromIdea(ideaId: string) {
   try {
-    const draft = await runContentPipeline(ideaId);
+    const result = await runContentPipeline(ideaId);
 
     revalidatePath("/dashboard");
     revalidatePath("/ideas");
     revalidatePath(`/ideas/${ideaId}`);
     revalidatePath("/drafts");
-    revalidatePath(`/drafts/${draft.id}`);
     revalidatePath("/agent-runs");
+
+    if (!result.draft) {
+      return {
+        ok: true,
+        ideaQuality: result.ideaQuality,
+        blocked: true
+      };
+    }
+
+    revalidatePath(`/drafts/${result.draft.id}`);
 
     return {
       ok: true,
-      draftId: draft.id
+      draftId: result.draft.id,
+      ideaQuality: result.ideaQuality,
+      blocked: false
     };
   } catch (error) {
     return {
